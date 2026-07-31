@@ -96,7 +96,7 @@ ffdat$`For-Hire` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`For-Hire`)
 ffdat$`Commercial` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`Commercial`)
 #Drop "Other" from these two
 ffdat$Other <- ifelse(ffdat$`LAST Name`%in% c("Pettis","Hubbard"),0,ffdat$`Other`)
-#write.csv(ffdat, file = "Combined Gag FF 2021 and 2026.csv")
+write.csv(ffdat, file = "Combined KM FF 2019 and 2026.csv")
 ###########################################################################
 # Combined Overall Feedback -----------------------------------------------
 ###########################################################################
