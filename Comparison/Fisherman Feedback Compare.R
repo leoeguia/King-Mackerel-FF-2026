@@ -96,7 +96,15 @@ ffdat$`For-Hire` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`For-Hire`)
 ffdat$`Commercial` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`Commercial`)
 #Drop "Other" from these two
 ffdat$Other <- ifelse(ffdat$`LAST Name`%in% c("Pettis","Hubbard"),0,ffdat$`Other`)
-write.csv(ffdat, file = "Combined KM FF 2019 and 2026.csv")
+
+#Save the combined dataset if you want
+#write.csv(ffdat, file = "Comparison/Combined KM FF 2019 and 2026.csv")
+
+
+# Start here if Data Combined Already--------------------------------------
+#You will still need to load packages at the start
+#ffdat <- read.csv("Comparison/Combined KM FF 2019 and 2026.csv")
+
 ###########################################################################
 # Combined Overall Feedback -----------------------------------------------
 ###########################################################################
@@ -690,6 +698,9 @@ sect_stocksent_comp$Sentiment <- factor(sect_stocksent_comp$Sentiment, levels = 
 
 sect_stocksent_comp$Year <- factor(sect_stocksent_comp$Var1)
 
+(sum(sect_stocksent_comp$Freq[sect_stocksent_comp$Year==2019]))
+(sum(sect_stocksent_comp$Freq[sect_stocksent_comp$Year==2026]))
+
 #Multiple bars - not good
 ggplot(sect_stocksent_comp,aes(x = Sentiment, y = prop, fill = factor(Year))) +
   geom_col(position = "dodge") +
@@ -819,6 +830,7 @@ direction_counts <- sent_change %>%
   dplyr::count(direction) %>%
   arrange(desc(n)) 
 
+#Hard code because no Improved Sentiments - Change/Delete as necessary
 direction_counts[3,1]<- "Improved"
 direction_counts[3,2]<-0
 
@@ -918,6 +930,7 @@ stock_direction_counts <- stocksent_change %>%
   dplyr::count(direction) %>%
   arrange(desc(n))
 
+#Hard code because no Improved Sentiments - Change/Delete as necessary
 stock_direction_counts[3,1]<- "Improved"
 stock_direction_counts[3,2]<-0
 # Figures -----------------------------------------------------------------
@@ -986,30 +999,14 @@ bothsurvgeo2 <- bothsurvgeo %>%
   mutate(value = 1)%>%
   pivot_wider(names_from = `Region`,values_from = value, values_fill = 0, values_fn = max)
 
-regioncounts <- bothsurvgeo2 %>% 
-  pivot_longer(cols = `1`:`21`,  names_to = "Region",
-               values_to = "value"
-  ) %>%
-  filter(value == 1) %>%
-  count(Region, Year) %>%
-  pivot_wider(
-    names_from = Year,
-    values_from = n,
-    names_prefix = "n_",
-    values_fill = 0
-  )
 
 region_counts <- bothsurvgeo %>%
   separate_rows(`Region`, sep = ",") %>%
   mutate(`Region` = str_trim(`Region`)) %>%
   filter(`Region` != "") %>%
   dplyr::count(`Region`, `Year`) %>%
-  pivot_wider(
-    names_from = `Year`,
-    values_from = n,
-    names_prefix = "n_",
-    values_fill = 0
-  )
+  pivot_wider(names_from = `Year`,values_from = n,names_prefix = "n_",values_fill = 0)
+
 region_counts$Region <- as.numeric(region_counts$Region)
 ###########################################################################
 ######                      Fisherman Feedback Analysis              ######
@@ -1591,6 +1588,7 @@ library(sf)
 library(sp)
 library(doBy)
 library(readxl)
+library(maps)
 
 
 
@@ -1867,6 +1865,9 @@ nLabels[21,2] <- -96.3
 
 # Plot Response Changes ---------------------------------------------------
 
+#Add state boundaries
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
+states <- st_transform(states, st_crs(gridShrimp))
 
 # Create a color palette for the map:
 mypalette <- colorNumeric( palette="viridis", domain=gridShrimp@data$n_diff, na.color="transparent", reverse=TRUE)
@@ -1876,6 +1877,8 @@ m <- leaflet(gridShrimp, padding=25) %>% ## added padding for whitespace
   # addEsriBasemapLayer(esriBasemapLayers$ShadedRelief, autoLabels = TRUE, group="ShadedRelief") %>% 
   #addTiles()  %>%
   setView( lat=27.5, lng=-89.5 , zoom=6) %>%
+  addPolylines(data = states, color = "black",
+               weight = 1, opacity = 0.5,fill = FALSE) %>%
   addPolygons( fillColor = ~mypalette(n_diff),  fillOpacity = 0.5,
                stroke=TRUE, weight=1, color="#6E6E6E") %>% 
   addLegendNumeric(pal = mypalette, values = ~n_diff,
@@ -2193,6 +2196,9 @@ nLabels$n_2026 <- Xout$n_2026
 #webshot::install_phantomjs()
 sent_change_pallete <- colorFactor(palette=c("Improved" = "#92D050","No change" = "#FFFF00","Worsened" = "#ED7D31"), domain= c("Improved", "No change", "Worsened"), na.color="transparent")
 
+#Add state boundaries
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
+states <- st_transform(states, st_crs(gridShrimp))
 # Old map -----------------------------------------------------------------
 
 ###This adjusts the size of the legend
@@ -2293,6 +2299,8 @@ m <- leaflet(gridShrimp, padding=25) %>% ## added padding for whitespace
   # addEsriBasemapLayer(esriBasemapLayers$ShadedRelief, autoLabels = TRUE, group="ShadedRelief") %>% 
   #addTiles()  %>%
   setView( lat=27.5, lng=-89.5 , zoom=6) %>%
+  addPolylines(data = states, color = "black",
+               weight = 1, opacity = 0.5,fill = FALSE) %>%
   addPolygons( fillColor = ~sent_change_pallete_cont(Sent_change_n),  fillOpacity = 0.5,
                stroke=TRUE, weight=1, color="#6E6E6E") %>% 
   addLabelOnlyMarkers(
@@ -2543,6 +2551,10 @@ nLabels$n_2026 <- Xout$n_2026
 #write.csv(nLabels, "nlabels.csv", row.names=FALSE)
 ###This adjusts the size of the legend
 
+#Add state boundaries
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
+states <- st_transform(states, st_crs(gridShrimp))
+
 # Old map -----------------------------------------------------------------
 
 m <- leaflet(gridShrimp, padding=25) %>% ## added padding for whitespace
@@ -2640,6 +2652,8 @@ m <- leaflet(gridShrimp, padding=25) %>% ## added padding for whitespace
   # addEsriBasemapLayer(esriBasemapLayers$ShadedRelief, autoLabels = TRUE, group="ShadedRelief") %>% 
   #addTiles()  %>%
   setView( lat=27.5, lng=-89.5 , zoom=6) %>%
+  addPolylines(data = states, color = "black",
+               weight = 1, opacity = 0.5,fill = FALSE) %>%
   addPolygons( fillColor = ~sent_change_pallete_cont(Sent_change_n),  fillOpacity = 0.5,
                stroke=TRUE, weight=1, color="#6E6E6E") %>% 
   addLabelOnlyMarkers(

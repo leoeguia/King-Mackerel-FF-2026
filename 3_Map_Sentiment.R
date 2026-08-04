@@ -23,6 +23,7 @@ library(sf)
 library(sp)
 library(doBy)
 library(readxl)
+library(maps)
 
 rm(list=ls())
 ### 2) import 
@@ -225,6 +226,11 @@ nLabels[21,3] <- 30.21107
 #webshot::install_phantomjs()
 
 
+# Plot Responses ----------------------------------------------------------
+#Add state boundaries
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
+states <- st_transform(states, st_crs(gridShrimp))
+
 # Create a color palette for the map:
 mypalette <- colorNumeric( palette="viridis", domain=gridShrimp@data$Responses, na.color="transparent", reverse=TRUE)
 
@@ -233,6 +239,8 @@ m <- leaflet(gridShrimp, padding=25) %>% ## added padding for whitespace
   # addEsriBasemapLayer(esriBasemapLayers$ShadedRelief, autoLabels = TRUE, group="ShadedRelief") %>% 
   #addTiles()  %>%
   setView( lat=27.5, lng=-89.5 , zoom=6) %>%
+  addPolylines(data = states, color = "black",
+               weight = 1, opacity = 0.5,fill = FALSE) %>%
   addPolygons( fillColor = ~mypalette(Responses),  fillOpacity = 0.5,
                stroke=TRUE, weight=1, color="#6E6E6E") %>% 
   addLegendNumeric(pal = mypalette, values = ~Responses,
@@ -254,7 +262,7 @@ saveWidget(m, "Map Plots/ResponsePlot.html", selfcontained = FALSE)
 # webshot("ResponsePlot.html", file = "ResponsePlot.png",
 #         cliprect = "viewport") Doesn't work correctly with padding, use below
 webshot("Map Plots/ResponsePlot.html", file = "Map Plots/ResponsePlot.png")
-############## 5: Sentiment 
+############## 5: Sentiment ###################################################
 #### This section will produce two maps: 1) a map of the sentiment analysis using the Bing lexicon library
 ####  and 2) a manual analysis 
 
@@ -356,12 +364,20 @@ nLabels$n <- rowSums(nLabels[,4:6])
 
 #write.csv(nLabels, "nlabels.csv", row.names=FALSE)
 
+
+#Add state boundaries
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
+states <- st_transform(states, st_crs(gridShrimp))
+
+
 colors <- c("#fc8d59", "#ffffbf", "#99d594") # from https://colorbrewer2.org/#type=diverging&scheme=Spectral&n=3
 m <- leaflet(pieGrid, padding=25) %>% 
   addProviderTiles(providers$Esri.WorldShadedRelief, group = "ShadedRelief") %>% 
   #addEsriBasemapLayer(esriBasemapLayers$ShadedRelief, autoLabels = FALSE, group="ShadedRelief") %>%
   
-  setView( lat=27, lng=-89 , zoom=6) %>%
+  setView( lat=27.5, lng=-89.5 , zoom=6) %>%
+  addPolylines(data = states, color = "black",
+               weight = 1, opacity = 0.5,fill = FALSE) %>%
   addPolygons(data=pieGrid,stroke=TRUE, weight=1, color="#6E6E6E") %>% 
   
   ### add pie chart
@@ -370,7 +386,9 @@ m <- leaflet(pieGrid, padding=25) %>%
     type = "pie",
     chartdata = centroidsPie2[, c("Negative", "Neutral/Mixed", "Positive")], 
     colorPalette = colors,
-    width = 30, transitionTime = 0
+    width = 30, transitionTime = 0,
+    legend = TRUE,
+    legendPosition = "bottomleft"
   ) %>% 
   addScaleBar(position="bottomleft", options = scaleBarOptions(imperial=TRUE, metric=FALSE))%>% 
   addMouseCoordinates() %>% 
@@ -382,10 +400,10 @@ m <- leaflet(pieGrid, padding=25) %>%
     #label = ~paste("n = ", nLabels[,8]),
     labelOptions = labelOptions(noHide = T, textOnly = TRUE, style = list("font-size" = "14px","font-weight" = "bold"))) %>% 
   addLabelOnlyMarkers(
-    lng = -97.25 , lat = 20.5 ,
+    lng = -93.5 , lat = 24.5 ,
     label = ~paste("Number in each grid indicates sample size"),
     #label = ~paste("n = ", nLabels[,8]),
-    labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>% 
+    labelOptions = labelOptions(noHide = T, textOnly = TRUE, textsize = "14px")) %>% 
   removeMapJunk( "zoomControl") ### remove zoom control for export
 m
 
@@ -441,7 +459,9 @@ Xout$Pos_Prop <- Xout$Positive/(Xout$Negative+Xout$Neutral+Xout$Positive)
 ### Now merge with Centroids
 
 #Rename Neutral -> Neutral/Mixed
-colnames(Xout) <- c("ID", "Negative", "Neutral/Mixed", "Positive")
+colnames(Xout) <- c("ID", "Negative", "Neutral/Mixed", "Positive","Responses","Neg_Prop","Neut_Prop","Pos_Prop")
+
+sum(Xout$Responses)
 #write.csv(Xout, "SampleAreaAbundance.csv", row.names=FALSE)
 
 
@@ -477,12 +497,18 @@ nLabels$n <- rowSums(nLabels[,4:6])
 #write.csv(nLabels, "nlabels.csv", row.names=FALSE)
 
 
+#Add state boundaries
+states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
+states <- st_transform(states, st_crs(gridShrimp))
+
 colors <- c("#fc8d59", "#ffffbf", "#99d594") # from https://colorbrewer2.org/#type=diverging&scheme=Spectral&n=3
 m <- leaflet(pieGrid, padding=25) %>% 
   addProviderTiles(providers$Esri.WorldShadedRelief, group = "ShadedRelief") %>% 
   #addEsriBasemapLayer(esriBasemapLayers$ShadedRelief, autoLabels = FALSE, group="ShadedRelief") %>%
   
-  setView( lat=27, lng=-89 , zoom=6) %>%
+  setView( lat=27.5, lng=-89.5 , zoom=6) %>%
+  addPolylines(data = states, color = "black",
+               weight = 1, opacity = 0.5,fill = FALSE) %>%
   addPolygons(data=pieGrid,stroke=TRUE, weight=1, color="#6E6E6E") %>% 
   
   ### add pie chart
@@ -491,7 +517,9 @@ m <- leaflet(pieGrid, padding=25) %>%
     type = "pie",
     chartdata = centroidsPie2[, c("Negative", "Neutral/Mixed", "Positive")], 
     colorPalette = colors,
-    width = 30, transitionTime = 0
+    width = 30, transitionTime = 0,
+    legend = TRUE,
+    legendPosition = "bottomleft"
   ) %>% 
   addScaleBar(position="bottomleft", options = scaleBarOptions(imperial=TRUE, metric=FALSE))%>% 
   addMouseCoordinates() %>% 
@@ -503,10 +531,10 @@ m <- leaflet(pieGrid, padding=25) %>%
     #label = ~paste("n = ", nLabels[,8]),
     labelOptions = labelOptions(noHide = T, textOnly = TRUE, style = list("font-size" = "14px","font-weight" = "bold"))) %>% 
   addLabelOnlyMarkers(
-    lng = -97.25 , lat = 20.5 ,
+    lng = -93.5 , lat = 24.5 ,
     label = ~paste("Number in each grid indicates sample size"),
     #label = ~paste("n = ", nLabels[,8]),
-    labelOptions = labelOptions(noHide = T, textOnly = TRUE)) %>% 
+    labelOptions = labelOptions(noHide = T, textOnly = TRUE,style = list("font-size" = "14px","font-weight" = "bold"))) %>% 
   removeMapJunk( "zoomControl") %>% ### remove zoom control for export
   addLogo("North.png", position = "bottomright", alpha = 0.3)
 m

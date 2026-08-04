@@ -81,7 +81,7 @@ overall_sent <- as.data.frame(table(ffdat$`Final Overall Sentiment`))
 overall_sent$Sentiment <- c("Negative","Neutral/Mixed","Positive")
 #Add proportions
 overall_sent$prop <- overall_sent$Freq/sum(overall_sent$Freq)
-
+#overall_sent$prop[3]<-1-sum(overall_sent$prop[1:2])
 #Adds label locations and identifiers
 overall_sent <- overall_sent %>% 
   arrange(desc(Freq)) %>% 
@@ -92,7 +92,8 @@ overall_sent$Sentiment <- factor(overall_sent$Sentiment, levels = c("Positive", 
 overall_sent_plot <- ggplot(overall_sent, aes(x = 1, y = prop, fill = Sentiment)) +
   geom_col(width = 1, color = "white") +
   coord_polar(theta = "y") +
-  geom_text(aes(label = Freq),position = position_stack(vjust = 0.5), color = "black", size = 6) +
+  geom_text(aes(label = Freq),position = position_stack(vjust = 0.5), color = "black", size = 4) +
+  #geom_text(aes(y = label_pos, label = Freq),position = "identity",size = 6)+
   theme_void() +
   scale_fill_manual(values = c("#92D050","#FFFF00","#ED7D31")) +
   labs(title = "Overall Comment Sentiment") +
@@ -214,26 +215,29 @@ ggsave("Broad Sentiment Plots/No background/Stock Condition Sentiment.png",
 PR <- ffdat[ffdat$`Private Recreational`==1,]
 FH <- ffdat[ffdat$`For-Hire`==1,]
 CM <- ffdat[ffdat$`Commercial`==1,]
-OT <- ffdat[ffdat$`Other`==1,] #Remove if unwanted
+#OT <- ffdat[ffdat$`Other`==1,] #Remove if unwanted
 #Number of rows for filtered datasets to unique sectors
 #Some responses come from multiple sectors, so PR+FH+CM likely greater than original dataset
 (PR_resp <- nrow(PR))
 (FH_resp <- nrow(FH))
 (CM_resp <- nrow(CM))
-(OT_resp <- nrow(OT)) #Remove if unwanted
+#(OT_resp <- nrow(OT)) #Remove if unwanted
 
 #Total sector responses (greater than actual responses)
-#(PR_resp+FH_resp+CM_resp) #No other category
-(PR_resp+FH_resp+CM_resp+OT_resp) #With Other Category
+(PR_resp+FH_resp+CM_resp) #No other category
+#(PR_resp+FH_resp+CM_resp+OT_resp) #With Other Category
 
 ### Prep data for Pie Chart 
 #No Other Category
-#num_sector <- data.frame(Fleet = c("Private Recreational","For-Hire","Commercial"), Freq = c(PR_resp,FH_resp,CM_resp))
+num_sector <- data.frame(Fleet = c("Private Recreational","For-Hire","Commercial"), Freq = c(PR_resp,FH_resp,CM_resp))
 #With Other Category
-num_sector <- data.frame(Fleet = c("Private Recreational","For-Hire","Commercial","Other"), Freq = c(PR_resp,FH_resp,CM_resp,OT_resp))
+#num_sector <- data.frame(Fleet = c("Private Recreational","For-Hire","Commercial","Other"), Freq = c(PR_resp,FH_resp,CM_resp,OT_resp))
 #num_sector$Prop <- num_sector$Freq/numresp 
 num_sector$prop <- num_sector$Freq/sum(num_sector$Freq)
+#No Other Category
 num_sector$Fleet <- factor(num_sector$Fleet, levels = c("Private Recreational","For-Hire","Commercial","Other"))
+#With Other Category
+#num_sector$Fleet <- factor(num_sector$Fleet, levels = c("Private Recreational","For-Hire","Commercial","Other"))
 
 num_sector <- num_sector %>% 
   arrange(desc(Freq)) %>% 
@@ -248,8 +252,8 @@ sectorpieplot <- ggplot(num_sector, aes(x = 1, y = -prop, fill = Fleet)) +
   geom_text(aes(label = Freq, x =1.2), position = position_stack(vjust=0.5),color = "black", size = 4,fontface = "bold") +
   coord_polar(theta = "y") +
   theme_void() +
-  #scale_fill_manual(values = c("#4472C4","#CCCCFF","#A6A6A6")) + #No Other category
-  scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4","#0F9ED5")) + #With Other Category
+  scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4")) + #No Other category
+  #scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4","#0F9ED5")) + #With Other Category
   #labs(title = "Responses by Sector") +
   theme(legend.position = "bottom",
         legend.title = element_blank(),
@@ -273,8 +277,8 @@ sectorpieplot_nb <- ggplot(num_sector, aes(x = 1, y = -prop, fill = Fleet)) +
   geom_text(aes(label = Freq, x =1.2), position = position_stack(vjust=0.5),color = "black", size = 4,fontface = "bold") +
   coord_polar(theta = "y") +
   theme_void() +
-  #scale_fill_manual(values = c("#4472C4","#CCCCFF","#A6A6A6")) + #No Other category
-  scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4","#0F9ED5")) + #With Other Category
+  scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4")) + #No Other category
+  #scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4","#0F9ED5")) + #With Other Category
   #labs(title = "Responses by Sector") +
   theme(legend.position = "bottom",
         legend.title = element_blank(),
@@ -294,8 +298,8 @@ ggsave("Broad Sentiment Plots/No background/Responses by Sector Pie.png",
 sectorbarplot <- ggplot(num_sector, aes(x = Fleet, y = Freq, fill = Fleet)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Responses by Sector", x = "", y = "", fill = "") +
-  #scale_fill_manual(values = c("#4472C4","#CCCCFF","#A6A6A6")) + #No Other category
-  scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4","#0F9ED5")) + #With Other Category
+  scale_fill_manual(values = c("#4472C4","#CCCCFF","#A6A6A6")) + #No Other category
+  #scale_fill_manual(values = c("#A6A6A6","#CCCCFF","#4472C4","#0F9ED5")) + #With Other Category
   theme_minimal()+
   theme(legend.position = "bottom",legend.title = element_blank(),legend.text = element_text(size = 12),
         plot.title = element_text(hjust = 0.5, size = 20),axis.text = element_text(size = 12),
