@@ -1886,7 +1886,7 @@ m <- leaflet(gridShrimp, padding=25) %>% ## added padding for whitespace
                    title = "Difference in number of responses",
                    labelStyle = "font-size: 18px; font-weight: bold;",
                    #labFormat = labelFormat(prefix = "$"),
-                   bins = 7,
+                   bins = c(-1,5,10,15,20,25,29),
                    fillOpacity = 0.5, 
                    position=("bottomleft")
   ) %>% 
