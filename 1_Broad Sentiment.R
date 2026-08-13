@@ -56,12 +56,12 @@ ffdat <- ffdat_OG %>%
 # Check "Other" Category --------------------------------------------------
 #Manually fix some of the fleets
 others <- ffdat[ffdat$Other==1,]
-check <- ffdat[ffdat$`LAST Name`%in% c("Pettis","Hubbard"),]
-ffdat$`Private Recreational` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`Private Recreational`)
-ffdat$`For-Hire` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`For-Hire`)
-ffdat$`Commercial` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`Commercial`)
+check <- ffdat[ffdat$`Respondent ID`%in% c("41-41","43-43"),]
+ffdat$`Private Recreational` <- ifelse(ffdat$`Respondent ID`%in% c("43-43"),1,ffdat$`Private Recreational`)
+ffdat$`For-Hire` <- ifelse(ffdat$`Respondent ID`%in% c("43-43"),1,ffdat$`For-Hire`)
+ffdat$`Commercial` <- ifelse(ffdat$`Respondent ID`%in% c("43-43"),1,ffdat$`Commercial`)
 #Drop "Other" from these two
-ffdat$Other <- ifelse(ffdat$`LAST Name`%in% c("Pettis","Hubbard"),0,ffdat$`Other`)
+ffdat$Other <- ifelse(ffdat$`Respondent ID`%in% c("41-41","43-43"),0,ffdat$`Other`)
 ###########################################################################
 # Overall Feedback --------------------------------------------------------
 ###########################################################################
@@ -338,7 +338,7 @@ sectorsent <- sectorsent %>%
          Sentiment = recode(Var1, "-1" = "Negative", "0" = "Neutral/Mixed", "1" = "Positive")) %>% 
   complete(Fleet,Sentiment,fill=list(Freq=0))
 #Sets the order of sector
-sectorsent$Fleet <- factor(sectorsent$Fleet, levels = unique(sectorsent$Fleet))
+sectorsent$Fleet <- factor(sectorsent$Fleet, levels = c("Private Recreational","For-Hire","Commercial"))
 #Sets the order of sentiment
 sectorsent$Sentiment <- factor(sectorsent$Sentiment, levels = c("Positive", "Neutral/Mixed","Negative"))
 

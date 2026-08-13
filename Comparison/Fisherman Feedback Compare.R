@@ -90,12 +90,12 @@ ffdat <- ffdat %>%
 # Check "Other" Category --------------------------------------------------
 #Manually fix some of the fleets
 others <- ffdat[ffdat$Other==1,]
-check <- ffdat[ffdat$`LAST Name`%in% c("Pettis","Hubbard"),]
-ffdat$`Private Recreational` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`Private Recreational`)
-ffdat$`For-Hire` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`For-Hire`)
-ffdat$`Commercial` <- ifelse(ffdat$`FIRST Name`%in% c("Van"),1,ffdat$`Commercial`)
+check <- ffdat[ffdat$`Respondent ID`%in% c("41-41","43-43"),]
+ffdat$`Private Recreational` <- ifelse(ffdat$`Respondent ID`%in% c("43-43"),1,ffdat$`Private Recreational`)
+ffdat$`For-Hire` <- ifelse(ffdat$`Respondent ID`%in% c("43-43"),1,ffdat$`For-Hire`)
+ffdat$`Commercial` <- ifelse(ffdat$`Respondent ID`%in% c("43-43"),1,ffdat$`Commercial`)
 #Drop "Other" from these two
-ffdat$Other <- ifelse(ffdat$`LAST Name`%in% c("Pettis","Hubbard"),0,ffdat$`Other`)
+ffdat$Other <- ifelse(ffdat$`Respondent ID`%in% c("41-41","43-43"),0,ffdat$`Other`)
 
 #Save the combined dataset if you want
 #write.csv(ffdat, file = "Comparison/Combined KM FF 2019 and 2026.csv")
@@ -768,246 +768,247 @@ ggsave("Comparison/Broad Sentiment Plots/Compare Stock Sentiment by Sector 2.png
 # See who did both surveys ------------------------------------------------
 ###########################################################################
 # Filter for people who did both surveys ----------------------------------
-ffdat$`Full name` <- paste0(ffdat$`FIRST Name`," ",ffdat$`LAST Name`)
-ffdat$`Full name` <- paste0(tolower(ffdat$`FIRST Name`)," ",tolower(ffdat$`LAST Name`))
-bothsurveys <- ffdat %>% 
-  group_by(`Full name`) %>% 
-  filter(n()>1) %>% 
-  ungroup() %>% 
-  arrange(`Full name`)
-name_check <- bothsurveys %>%
-  dplyr::summarise(n = n(), .by = c(`Full name`, Year)) %>%
-  filter(n > 1)
-bothsurveys <- bothsurveys[!(bothsurveys$`Full name`%in% name_check$`Full name`),]
-
-bothsurveys <- bothsurveys %>%
-  group_by(`Full name`) %>%
-  dplyr::mutate(name_id = cur_group_id()) %>%
-  ungroup()
-
-# Sentiment Change --------------------------------------------------------
-
-sent_change <- bothsurveys %>% 
-  select(Year,name_id,`Final Overall Sentiment`) %>% 
-  pivot_wider(names_from = Year,
-    values_from = `Final Overall Sentiment`,
-    names_prefix = "sent_") %>% 
-  mutate(sent_2019 = as.numeric(sent_2019),sent_2026 = as.numeric(sent_2026),
-         sentiment_change = sent_2026 - sent_2019)
-
-sent_change <- sent_change %>%
-  mutate(sentiment_transition = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "Positive - Positive",
-                                          sent_2019 ==  1 & sent_2026 ==  0 ~ "Positive - Neutral/Mixed",
-                                          sent_2019 ==  1 & sent_2026 == -1 ~ "Positive - Negative",
-                                          sent_2019 ==  0 & sent_2026 ==  1 ~ "Neutral/Mixed - Positive",
-                                          sent_2019 ==  0 & sent_2026 ==  0 ~ "Neutral/Mixed - Neutral/Mixed",
-                                          sent_2019 ==  0 & sent_2026 == -1 ~ "Neutral/Mixed - Negative",
-                                          sent_2019 == -1 & sent_2026 ==  1 ~ "Negative - Positive",
-                                          sent_2019 == -1 & sent_2026 ==  0 ~ "Negative - Neutral/Mixed",
-                                          sent_2019 == -1 & sent_2026 == -1 ~ "Negative - Negative",
-                                          TRUE ~ NA_character_)) %>% 
-  mutate(sentiment_score = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "2",
-                                     sent_2019 ==  1 & sent_2026 ==  0 ~'0.5',
-                                     sent_2019 ==  1 & sent_2026 == -1 ~ '-1.5',
-                                     sent_2019 ==  0 & sent_2026 ==  1 ~ '1',
-                                     sent_2019 ==  0 & sent_2026 ==  0 ~'0',
-                                     sent_2019 ==  0 & sent_2026 == -1 ~ '-1',
-                                     sent_2019 == -1 & sent_2026 ==  1 ~ '1.5',
-                                     sent_2019 == -1 & sent_2026 ==  0 ~ '-0.5',
-                                     sent_2019 == -1 & sent_2026 == -1 ~ '-2',
-                                     TRUE ~ NA_character_))
-
-sent_change$sentiment_score <- as.numeric(sent_change$sentiment_score)
-transition_counts <- sent_change %>%
-  dplyr::count(sentiment_transition) %>%
-  arrange(desc(n))
-sent_change <- sent_change %>%
-  mutate(direction = case_when(sent_2026 > sent_2019 ~ "Improved",sent_2026 < sent_2019 ~ "Worsened",TRUE ~ "No change"))%>% 
-  complete(direction,fill=list(n=0))
-table(sent_change$direction)
-
-direction_counts <- sent_change %>%
-  dplyr::count(direction) %>%
-  arrange(desc(n)) 
-
-#Hard code because no Improved Sentiments - Change/Delete as necessary
-direction_counts[3,1]<- "Improved"
-direction_counts[3,2]<-0
-
-
-# Figures -----------------------------------------------------------------
-
-
-ggplot(transition_counts,aes(x = reorder(sentiment_transition, n),y = n)) +
-  geom_col(fill = "#4E79A7") +
-  coord_flip() +
-  labs(x = "", y = "") +
-  scale_y_continuous(breaks = c(0,2,4,6,8,10))+
-  theme_minimal()+
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
-
-sentchange_plot <- ggplot(direction_counts,aes(x = reorder(direction, n),y = n)) +
-  geom_col(fill= c("#FFFF00","#ED7D31","#92D050")) +
-  coord_flip() +
-  labs(x = "", y = "") +
-  #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
-  theme_minimal()+
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
-print(sentchange_plot)
-
-ggsave("Comparison/Broad Sentiment Plots/Sentiment Change Both Surveys.png",
-       plot = sentchange_plot,
-       width = 6.5, #Adjust width as needed
-       height = 3.76, #Adjust height as needed
-       units = "in",
-       dpi = 700)
-
-table(sent_change$sent_2019, sent_change$sent_2026)
-
-#Plot without "Improved"
-sentchange_plot2 <- ggplot(direction_counts[-3,],aes(x = reorder(direction, n),y = n)) +
-  geom_col(fill= c("#FFFF00","#ED7D31")) +
-  coord_flip() +
-  labs(x = "", y = "") +
-  #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
-  theme_minimal()+
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
-print(sentchange_plot2)
-
-ggsave("Comparison/Broad Sentiment Plots/Sentiment Change Both Surveys - No Improved.png",
-       plot = sentchange_plot2,
-       width = 6.5, #Adjust width as needed
-       height = 3.76, #Adjust height as needed
-       units = "in",
-       dpi = 700)
-# Stock Sentiment Change --------------------------------------------------
-
-
-
-stocksent_change <- bothsurveys %>% 
-  select(Year,name_id,`Final  Stock Condition`) %>% 
-  pivot_wider(names_from = Year,
-              values_from = `Final  Stock Condition`,
-              names_prefix = "sent_") %>% 
-  mutate(sent_2019 = as.numeric(sent_2019),sent_2026 = as.numeric(sent_2026),
-         sentiment_change = sent_2026 - sent_2019) 
-
-stocksent_change<-stocksent_change[!is.na(stocksent_change$sentiment_change),]
-stocksent_change <- stocksent_change %>%
-  mutate(sentiment_transition = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "Positive - Positive",
-                                          sent_2019 ==  1 & sent_2026 ==  0 ~ "Positive - Neutral/Mixed",
-                                          sent_2019 ==  1 & sent_2026 == -1 ~ "Positive - Negative",
-                                          sent_2019 ==  0 & sent_2026 ==  1 ~ "Neutral/Mixed - Positive",
-                                          sent_2019 ==  0 & sent_2026 ==  0 ~ "Neutral/Mixed - Neutral/Mixed",
-                                          sent_2019 ==  0 & sent_2026 == -1 ~ "Neutral/Mixed - Negative",
-                                          sent_2019 == -1 & sent_2026 ==  1 ~ "Negative - Positive",
-                                          sent_2019 == -1 & sent_2026 ==  0 ~ "Negative - Neutral/Mixed",
-                                          sent_2019 == -1 & sent_2026 == -1 ~ "Negative - Negative",
-                                          TRUE ~ NA_character_)) %>% 
-  mutate(sentiment_score = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "2",
-                                     sent_2019 ==  1 & sent_2026 ==  0 ~'0.5',
-                                     sent_2019 ==  1 & sent_2026 == -1 ~ '-1.5',
-                                     sent_2019 ==  0 & sent_2026 ==  1 ~ '1',
-                                     sent_2019 ==  0 & sent_2026 ==  0 ~'0',
-                                     sent_2019 ==  0 & sent_2026 == -1 ~ '-1',
-                                     sent_2019 == -1 & sent_2026 ==  1 ~ '1.5',
-                                     sent_2019 == -1 & sent_2026 ==  0 ~ '-0.5',
-                                     sent_2019 == -1 & sent_2026 == -1 ~ '-2',
-                                     TRUE ~ NA_character_))
-
-stocksent_change$sentiment_score <- as.numeric(stocksent_change$sentiment_score)
-stock_transition_counts <- stocksent_change %>%
-  dplyr::count(sentiment_transition) %>%
-  arrange(desc(n))
-stocksent_change <- stocksent_change %>%
-  mutate(direction = case_when(sent_2026 > sent_2019 ~ "Improved",sent_2026 < sent_2019 ~ "Worsened",TRUE ~ "No change"))
-table(stocksent_change$direction)
-
-stock_direction_counts <- stocksent_change %>%
-  dplyr::count(direction) %>%
-  arrange(desc(n))
-
-#Hard code because no Improved Sentiments - Change/Delete as necessary
-stock_direction_counts[3,1]<- "Improved"
-stock_direction_counts[3,2]<-0
-# Figures -----------------------------------------------------------------
-
-
-ggplot(stock_transition_counts,aes(x = reorder(sentiment_transition, n),y = n)) +
-  geom_col(fill = "#4E79A7") +
-  coord_flip() +
-  labs(x = "", y = "") +
-  scale_y_continuous(breaks = c(0,2,4,6,8,10))+
-  theme_minimal()+
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
-
-stock_sentchange_plot <- ggplot(stock_direction_counts,aes(x = reorder(direction, n),y = n)) +
-  geom_col(fill= c("#FFFF00","#ED7D31","#92D050")) +
-  coord_flip() +
-  labs(x = "", y = "") +
-  #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
-  theme_minimal()+
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
-print(stock_sentchange_plot)
-
-ggsave("Comparison/Broad Sentiment Plots/Stock Sentiment Change Both Surveys.png",
-       plot = stock_sentchange_plot,
-       width = 6.5, #Adjust width as needed
-       height = 3.76, #Adjust height as needed
-       units = "in",
-       dpi = 700)
-
-table(sent_change$sent_2019, sent_change$sent_2026)
-
-stock_sentchange_plot2 <- ggplot(stock_direction_counts[-3,],aes(x = reorder(direction, n),y = n)) +
-  geom_col(fill= c("#FFFF00","#ED7D31")) +
-  coord_flip() +
-  labs(x = "", y = "") +
-  #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
-  theme_minimal()+
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
-print(stock_sentchange_plot2)
-
-ggsave("Comparison/Broad Sentiment Plots/Stock Sentiment Change Both Surveys - No Improved.png",
-       plot = stock_sentchange_plot2,
-       width = 6.5, #Adjust width as needed
-       height = 3.76, #Adjust height as needed
-       units = "in",
-       dpi = 700)
-# Geographic spread -------------------------------------------------------
-
-bothsurvgeo <- bothsurveys
-#Regions to split out by
-regions <- seq(1,21)
-
-#Dummy Region column to preserve original
-#"Fleet" column will be dropped in the next step
-bothsurvgeo$Region <- bothsurvgeo$`General Location of Observation`
-
-#This will create 4 new columns, with binary values for presence/absence of each fleet. 3 of which will be the main_sectors, and it will bin every other response into "Other". 
-#Un-comment the one below if you want all responses in binary form. 
-bothsurvgeo2 <- bothsurvgeo %>%
-  separate_rows(`Region`, sep = ",") %>%
-  mutate(`Region` = str_trim(`Region`)) %>%
-  filter(`Region` != "") %>% 
-  mutate(value = 1)%>%
-  pivot_wider(names_from = `Region`,values_from = value, values_fill = 0, values_fn = max)
-
-
-region_counts <- bothsurvgeo %>%
-  separate_rows(`Region`, sep = ",") %>%
-  mutate(`Region` = str_trim(`Region`)) %>%
-  filter(`Region` != "") %>%
-  dplyr::count(`Region`, `Year`) %>%
-  pivot_wider(names_from = `Year`,values_from = n,names_prefix = "n_",values_fill = 0)
-
-region_counts$Region <- as.numeric(region_counts$Region)
+## # This can only be completed with the original datasets. If using the scrubbed data, you must skip this since there's no way to align names
+# ffdat$`Full name` <- paste0(ffdat$`FIRST Name`," ",ffdat$`LAST Name`)
+# ffdat$`Full name` <- paste0(tolower(ffdat$`FIRST Name`)," ",tolower(ffdat$`LAST Name`))
+# bothsurveys <- ffdat %>% 
+#   group_by(`Full name`) %>% 
+#   filter(n()>1) %>% 
+#   ungroup() %>% 
+#   arrange(`Full name`)
+# name_check <- bothsurveys %>%
+#   dplyr::summarise(n = n(), .by = c(`Full name`, Year)) %>%
+#   filter(n > 1)
+# bothsurveys <- bothsurveys[!(bothsurveys$`Full name`%in% name_check$`Full name`),]
+# 
+# bothsurveys <- bothsurveys %>%
+#   group_by(`Full name`) %>%
+#   dplyr::mutate(name_id = cur_group_id()) %>%
+#   ungroup()
+# 
+# # Sentiment Change --------------------------------------------------------
+# 
+# sent_change <- bothsurveys %>% 
+#   select(Year,name_id,`Final Overall Sentiment`) %>% 
+#   pivot_wider(names_from = Year,
+#     values_from = `Final Overall Sentiment`,
+#     names_prefix = "sent_") %>% 
+#   mutate(sent_2019 = as.numeric(sent_2019),sent_2026 = as.numeric(sent_2026),
+#          sentiment_change = sent_2026 - sent_2019)
+# 
+# sent_change <- sent_change %>%
+#   mutate(sentiment_transition = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "Positive - Positive",
+#                                           sent_2019 ==  1 & sent_2026 ==  0 ~ "Positive - Neutral/Mixed",
+#                                           sent_2019 ==  1 & sent_2026 == -1 ~ "Positive - Negative",
+#                                           sent_2019 ==  0 & sent_2026 ==  1 ~ "Neutral/Mixed - Positive",
+#                                           sent_2019 ==  0 & sent_2026 ==  0 ~ "Neutral/Mixed - Neutral/Mixed",
+#                                           sent_2019 ==  0 & sent_2026 == -1 ~ "Neutral/Mixed - Negative",
+#                                           sent_2019 == -1 & sent_2026 ==  1 ~ "Negative - Positive",
+#                                           sent_2019 == -1 & sent_2026 ==  0 ~ "Negative - Neutral/Mixed",
+#                                           sent_2019 == -1 & sent_2026 == -1 ~ "Negative - Negative",
+#                                           TRUE ~ NA_character_)) %>% 
+#   mutate(sentiment_score = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "2",
+#                                      sent_2019 ==  1 & sent_2026 ==  0 ~'0.5',
+#                                      sent_2019 ==  1 & sent_2026 == -1 ~ '-1.5',
+#                                      sent_2019 ==  0 & sent_2026 ==  1 ~ '1',
+#                                      sent_2019 ==  0 & sent_2026 ==  0 ~'0',
+#                                      sent_2019 ==  0 & sent_2026 == -1 ~ '-1',
+#                                      sent_2019 == -1 & sent_2026 ==  1 ~ '1.5',
+#                                      sent_2019 == -1 & sent_2026 ==  0 ~ '-0.5',
+#                                      sent_2019 == -1 & sent_2026 == -1 ~ '-2',
+#                                      TRUE ~ NA_character_))
+# 
+# sent_change$sentiment_score <- as.numeric(sent_change$sentiment_score)
+# transition_counts <- sent_change %>%
+#   dplyr::count(sentiment_transition) %>%
+#   arrange(desc(n))
+# sent_change <- sent_change %>%
+#   mutate(direction = case_when(sent_2026 > sent_2019 ~ "Improved",sent_2026 < sent_2019 ~ "Worsened",TRUE ~ "No change"))%>% 
+#   complete(direction,fill=list(n=0))
+# table(sent_change$direction)
+# 
+# direction_counts <- sent_change %>%
+#   dplyr::count(direction) %>%
+#   arrange(desc(n)) 
+# 
+# #Hard code because no Improved Sentiments - Change/Delete as necessary
+# direction_counts[3,1]<- "Improved"
+# direction_counts[3,2]<-0
+# 
+# 
+# # Figures -----------------------------------------------------------------
+# 
+# 
+# ggplot(transition_counts,aes(x = reorder(sentiment_transition, n),y = n)) +
+#   geom_col(fill = "#4E79A7") +
+#   coord_flip() +
+#   labs(x = "", y = "") +
+#   scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+#   theme_minimal()+
+#   theme(panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
+# 
+# sentchange_plot <- ggplot(direction_counts,aes(x = reorder(direction, n),y = n)) +
+#   geom_col(fill= c("#FFFF00","#ED7D31","#92D050")) +
+#   coord_flip() +
+#   labs(x = "", y = "") +
+#   #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+#   theme_minimal()+
+#   theme(panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
+# print(sentchange_plot)
+# 
+# ggsave("Comparison/Broad Sentiment Plots/Sentiment Change Both Surveys.png",
+#        plot = sentchange_plot,
+#        width = 6.5, #Adjust width as needed
+#        height = 3.76, #Adjust height as needed
+#        units = "in",
+#        dpi = 700)
+# 
+# table(sent_change$sent_2019, sent_change$sent_2026)
+# 
+# #Plot without "Improved"
+# sentchange_plot2 <- ggplot(direction_counts[-3,],aes(x = reorder(direction, n),y = n)) +
+#   geom_col(fill= c("#FFFF00","#ED7D31")) +
+#   coord_flip() +
+#   labs(x = "", y = "") +
+#   #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+#   theme_minimal()+
+#   theme(panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
+# print(sentchange_plot2)
+# 
+# ggsave("Comparison/Broad Sentiment Plots/Sentiment Change Both Surveys - No Improved.png",
+#        plot = sentchange_plot2,
+#        width = 6.5, #Adjust width as needed
+#        height = 3.76, #Adjust height as needed
+#        units = "in",
+#        dpi = 700)
+# # Stock Sentiment Change --------------------------------------------------
+# 
+# 
+# 
+# stocksent_change <- bothsurveys %>% 
+#   select(Year,name_id,`Final  Stock Condition`) %>% 
+#   pivot_wider(names_from = Year,
+#               values_from = `Final  Stock Condition`,
+#               names_prefix = "sent_") %>% 
+#   mutate(sent_2019 = as.numeric(sent_2019),sent_2026 = as.numeric(sent_2026),
+#          sentiment_change = sent_2026 - sent_2019) 
+# 
+# stocksent_change<-stocksent_change[!is.na(stocksent_change$sentiment_change),]
+# stocksent_change <- stocksent_change %>%
+#   mutate(sentiment_transition = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "Positive - Positive",
+#                                           sent_2019 ==  1 & sent_2026 ==  0 ~ "Positive - Neutral/Mixed",
+#                                           sent_2019 ==  1 & sent_2026 == -1 ~ "Positive - Negative",
+#                                           sent_2019 ==  0 & sent_2026 ==  1 ~ "Neutral/Mixed - Positive",
+#                                           sent_2019 ==  0 & sent_2026 ==  0 ~ "Neutral/Mixed - Neutral/Mixed",
+#                                           sent_2019 ==  0 & sent_2026 == -1 ~ "Neutral/Mixed - Negative",
+#                                           sent_2019 == -1 & sent_2026 ==  1 ~ "Negative - Positive",
+#                                           sent_2019 == -1 & sent_2026 ==  0 ~ "Negative - Neutral/Mixed",
+#                                           sent_2019 == -1 & sent_2026 == -1 ~ "Negative - Negative",
+#                                           TRUE ~ NA_character_)) %>% 
+#   mutate(sentiment_score = case_when(sent_2019 ==  1 & sent_2026 ==  1 ~ "2",
+#                                      sent_2019 ==  1 & sent_2026 ==  0 ~'0.5',
+#                                      sent_2019 ==  1 & sent_2026 == -1 ~ '-1.5',
+#                                      sent_2019 ==  0 & sent_2026 ==  1 ~ '1',
+#                                      sent_2019 ==  0 & sent_2026 ==  0 ~'0',
+#                                      sent_2019 ==  0 & sent_2026 == -1 ~ '-1',
+#                                      sent_2019 == -1 & sent_2026 ==  1 ~ '1.5',
+#                                      sent_2019 == -1 & sent_2026 ==  0 ~ '-0.5',
+#                                      sent_2019 == -1 & sent_2026 == -1 ~ '-2',
+#                                      TRUE ~ NA_character_))
+# 
+# stocksent_change$sentiment_score <- as.numeric(stocksent_change$sentiment_score)
+# stock_transition_counts <- stocksent_change %>%
+#   dplyr::count(sentiment_transition) %>%
+#   arrange(desc(n))
+# stocksent_change <- stocksent_change %>%
+#   mutate(direction = case_when(sent_2026 > sent_2019 ~ "Improved",sent_2026 < sent_2019 ~ "Worsened",TRUE ~ "No change"))
+# table(stocksent_change$direction)
+# 
+# stock_direction_counts <- stocksent_change %>%
+#   dplyr::count(direction) %>%
+#   arrange(desc(n))
+# 
+# #Hard code because no Improved Sentiments - Change/Delete as necessary
+# stock_direction_counts[3,1]<- "Improved"
+# stock_direction_counts[3,2]<-0
+# # Figures -----------------------------------------------------------------
+# 
+# 
+# ggplot(stock_transition_counts,aes(x = reorder(sentiment_transition, n),y = n)) +
+#   geom_col(fill = "#4E79A7") +
+#   coord_flip() +
+#   labs(x = "", y = "") +
+#   scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+#   theme_minimal()+
+#   theme(panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
+# 
+# stock_sentchange_plot <- ggplot(stock_direction_counts,aes(x = reorder(direction, n),y = n)) +
+#   geom_col(fill= c("#FFFF00","#ED7D31","#92D050")) +
+#   coord_flip() +
+#   labs(x = "", y = "") +
+#   #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+#   theme_minimal()+
+#   theme(panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
+# print(stock_sentchange_plot)
+# 
+# ggsave("Comparison/Broad Sentiment Plots/Stock Sentiment Change Both Surveys.png",
+#        plot = stock_sentchange_plot,
+#        width = 6.5, #Adjust width as needed
+#        height = 3.76, #Adjust height as needed
+#        units = "in",
+#        dpi = 700)
+# 
+# table(sent_change$sent_2019, sent_change$sent_2026)
+# 
+# stock_sentchange_plot2 <- ggplot(stock_direction_counts[-3,],aes(x = reorder(direction, n),y = n)) +
+#   geom_col(fill= c("#FFFF00","#ED7D31")) +
+#   coord_flip() +
+#   labs(x = "", y = "") +
+#   #scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+#   theme_minimal()+
+#   theme(panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),panel.grid.minor.y = element_blank())
+# print(stock_sentchange_plot2)
+# 
+# ggsave("Comparison/Broad Sentiment Plots/Stock Sentiment Change Both Surveys - No Improved.png",
+#        plot = stock_sentchange_plot2,
+#        width = 6.5, #Adjust width as needed
+#        height = 3.76, #Adjust height as needed
+#        units = "in",
+#        dpi = 700)
+# # Geographic spread -------------------------------------------------------
+# 
+# bothsurvgeo <- bothsurveys
+# #Regions to split out by
+# regions <- seq(1,21)
+# 
+# #Dummy Region column to preserve original
+# #"Fleet" column will be dropped in the next step
+# bothsurvgeo$Region <- bothsurvgeo$`General Location of Observation`
+# 
+# #This will create 4 new columns, with binary values for presence/absence of each fleet. 3 of which will be the main_sectors, and it will bin every other response into "Other". 
+# #Un-comment the one below if you want all responses in binary form. 
+# bothsurvgeo2 <- bothsurvgeo %>%
+#   separate_rows(`Region`, sep = ",") %>%
+#   mutate(`Region` = str_trim(`Region`)) %>%
+#   filter(`Region` != "") %>% 
+#   mutate(value = 1)%>%
+#   pivot_wider(names_from = `Region`,values_from = value, values_fill = 0, values_fn = max)
+# 
+# 
+# region_counts <- bothsurvgeo %>%
+#   separate_rows(`Region`, sep = ",") %>%
+#   mutate(`Region` = str_trim(`Region`)) %>%
+#   filter(`Region` != "") %>%
+#   dplyr::count(`Region`, `Year`) %>%
+#   pivot_wider(names_from = `Year`,values_from = n,names_prefix = "n_",values_fill = 0)
+# 
+# region_counts$Region <- as.numeric(region_counts$Region)
 ###########################################################################
 ######                      Fisherman Feedback Analysis              ######
 ######                       King Mackerel Comparison                ######
